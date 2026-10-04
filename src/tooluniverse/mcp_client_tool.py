@@ -192,10 +192,21 @@ class BaseMCPClient:
             endpoint = self._get_mcp_endpoint("")
             headers = dict(self.headers)
             headers.update(self._resolve_http_headers())
+            # A tool call is often real work on someone else's machine. The library's default
+            # stops reading after 5 minutes: measured, a borrowed model that took 330 seconds
+            # failed at 300 with "Cancelled via cancel scope ...; reason: deadline exceeded"
+            # although the platform allowed it. Everything else keeps the default, so a wedged
+            # server cannot hold a load for this long.
+            long_read = (
+                {"sse_read_timeout": REMOTE_CALL_READ_TIMEOUT}
+                if method == "tools/call"
+                else {}
+            )
             async with streamablehttp_client(
                 endpoint,
                 headers=headers or None,
                 timeout=self.timeout,
+                **long_read,
             ) as (
                 read_stream,
                 write_stream,
@@ -444,6 +455,11 @@ class MCPClientTool(BaseTool, BaseMCPClient):
         return result
 
 
+# The platform caps one call at 15 minutes; wait a little longer so its own answer, which says
+# whether the call ran, arrives instead of a local timeout.
+REMOTE_CALL_READ_TIMEOUT = 16 * 60
+
+
 def describe_remote_call_failure(
     exc: BaseException, server_url: str, tool_name: str, auth_env: str = ""
 ) -> str:
@@ -462,6 +478,12 @@ def describe_remote_call_failure(
 
     leaf = leaf_exception(exc)
     detail = concise_exception_message(exc)
+    if isinstance(leaf, TimeoutError) or "deadline exceeded" in detail.lower():
+        # anyio says "Cancelled via cancel scope 7f3a...; reason: deadline exceeded".
+        return (
+            f"'{tool_name}' did not answer in time. It may still be running on the machine "
+            f"that serves it, so wait before calling it again rather than starting it twice."
+        )
     response = getattr(leaf, "response", None)
     status = getattr(response, "status_code", None)
     if "/relay/" not in (server_url or "") or not isinstance(status, int):
