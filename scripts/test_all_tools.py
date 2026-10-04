@@ -396,22 +396,22 @@ def _format_result_status(result: Dict[str, Any]) -> str:
         return "NO TESTS: category has no executable examples"
     if state == "skipped":
         skipped = result.get("skipped", 0)
+        reasons = []
         local_input = result.get("skipped_local_input", 0)
-        if local_input and local_input >= skipped:
-            return (
-                f"SKIPPED: {skipped} tool(s) need an input file the caller "
-                "supplies"
-            )
+        long_running = result.get("skipped_long_running", 0)
         if local_input:
-            return (
-                f"SKIPPED: {skipped} tool(s) -- {local_input} need an input "
-                f"file the caller supplies, {skipped - local_input} need a "
-                "credential this run does not have"
+            reasons.append(f"{local_input} need an input file the caller supplies")
+        if long_running:
+            reasons.append(f"{long_running} poll an upstream job for longer than "
+                           "this budget")
+        credential = skipped - local_input - long_running
+        if credential > 0:
+            reasons.append(
+                f"{credential} need a credential this run does not have"
             )
-        return (
-            f"SKIPPED: {skipped} tool(s) need a credential this run does not "
-            "have"
-        )
+        if len(reasons) == 1:
+            return f"SKIPPED: {skipped} tool(s) {reasons[0].split(' ', 1)[1]}"
+        return f"SKIPPED: {skipped} tool(s) -- " + ", ".join(reasons)
     return f"PASSED: {result.get('tests_run', 0)} test(s)"
 
 
@@ -637,6 +637,7 @@ _OUTPUT_LABELS: List[Tuple[str, str]] = [
     # credential can be told apart from one that ships no examples.
     ("Skipped:", "skipped"),
     ("Skipped local input:", "skipped_local_input"),
+    ("Skipped long running:", "skipped_long_running"),
 ]
 
 
