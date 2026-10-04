@@ -1915,6 +1915,16 @@ def _read_private_bytes(path: Path, *, maximum: int = 1 << 16) -> bytes:
         os.close(descriptor)
 
 
+# The website calls the account key a "private connection". This computer's own key, from
+# `tu remote login`, is a different kind that can only share this machine, so messages about it
+# say "sign-in" rather than reuse that name and send people to make the wrong one.
+NOT_SIGNED_IN_REASON = (
+    "this computer is not signed in to ToolUniverse yet. Run `tu remote login` once "
+    "(it shows a link to approve in any browser), then run this command again."
+)
+NOT_SIGNED_IN = "Error: " + NOT_SIGNED_IN_REASON
+
+
 def _valid_remote_key(key: str) -> bool:
     import re
 
@@ -2032,15 +2042,27 @@ def _connection_key_for_share(service: str, *, no_browser: bool = False) -> str:
         _validate_remote_connection_key(service, key)
         return key
     except RuntimeError as exc:
+        if not (isinstance(exc, _PlatformHTTPError) and exc.status in (401, 403)):
+            # Only the platform refusing the key means the key is the problem. An unreachable
+            # platform, or one having a bad moment, said "the key is no longer accepted --
+            # remove it" about a key that was fine, and on a terminal started a new sign-in.
+            raise
         # Explicit environment configuration wins: silently replacing it would leave the next
         # process broken again. Non-interactive jobs also fail fast instead of waiting on a browser.
         if not sys.stdin.isatty() or os.getenv("TOOLUNIVERSE_SERVICE_KEY", "").strip():
+            if os.getenv("TOOLUNIVERSE_SERVICE_KEY", "").strip():
+                # The variable wins over a stored sign-in, so logging in again would not help.
+                raise RuntimeError(
+                    f"the key in TOOLUNIVERSE_SERVICE_KEY is no longer accepted ({exc}). "
+                    "Remove it from this shell and from ~/.tooluniverse/.env, or replace it "
+                    "with a current key, then run this command again."
+                ) from exc
             raise RuntimeError(
-                "TU Platform connection-key validation failed before provider "
-                f"startup: {exc}. Run `tu remote login` to replace an expired or "
-                "revoked key."
+                f"this computer's sign-in is no longer accepted ({exc}) -- it was revoked on "
+                "the website or has expired. Run `tu remote login` to sign this computer in "
+                "again, then run this command again."
             ) from exc
-        print("Stored connection expired or was revoked; re-authorizing...")
+        print("This computer's sign-in expired or was revoked; signing in again...")
         key = _device_authorization_login(service, no_browser=no_browser)
         _write_stored_remote_key(key)
         return key
@@ -2336,10 +2358,7 @@ def _start_remote_tool_server(args: argparse.Namespace) -> None:
         no_browser=getattr(args, "no_browser", False),
     )
     if not api_key:
-        raise RuntimeError(
-            "--share requires a computer-only connection key. Set "
-            "TOOLUNIVERSE_SERVICE_KEY or run interactively to enter it securely."
-        )
+        raise RuntimeError(NOT_SIGNED_IN_REASON)
 
     server_errors = []
 
@@ -2394,7 +2413,7 @@ def _forward_remote_tool_server(args: argparse.Namespace) -> None:
         no_browser=getattr(args, "no_browser", False),
     )
     if not key:
-        raise RuntimeError("a computer-only connection key is required")
+        raise RuntimeError(NOT_SIGNED_IN_REASON)
     try:
         RelayAgent(
             args.service,
@@ -2642,15 +2661,14 @@ def cmd_remote_run(args: argparse.Namespace) -> None:
         raise SystemExit(2) from exc
     if args.share and not key:
         print(
-            "Error: no private connection key is configured. "
-            "Run `tu remote login` once, then retry this command.",
+            NOT_SIGNED_IN,
             file=sys.stderr,
         )
         raise SystemExit(2)
     if args.share and not _valid_remote_key(key):
         print(
-            "Error: the private connection key has an invalid format. "
-            "Unset TOOLUNIVERSE_SERVICE_KEY if it is overriding a stored login, "
+            "Error: TOOLUNIVERSE_SERVICE_KEY does not look like a ToolUniverse key "
+            "(they start with tu-sk-). Unset it if it is overriding a stored sign-in, "
             "then run `tu remote login`.",
             file=sys.stderr,
         )
@@ -2860,8 +2878,7 @@ def cmd_remote_pool(args: argparse.Namespace) -> None:
         raise SystemExit(2) from exc
     if args.share and (not key or not _valid_remote_key(key)):
         print(
-            "Error: no usable private connection key. "
-            "Run `tu remote login` once, then retry this command.",
+            NOT_SIGNED_IN,
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -3108,6 +3125,36 @@ def _platform_request(
             error_code=error_code,
             retry_after=retry_after,
         ) from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise RuntimeError(
+            _unreachable_message(base_url, getattr(exc, "reason", exc))
+        ) from exc
+
+
+def _unreachable_message(base_url: str, reason: object) -> str:
+    """Say why the platform could not be reached, in terms of what the person can do.
+
+    This used to surface as "remote login failed: <urlopen error [Errno 111] Connection
+    refused>" -- accurate, and nothing a scientist can act on. The three cases worth telling
+    apart are the ones with different fixes.
+    """
+    text = str(reason)
+    lowered = text.lower()
+    if "timed out" in lowered:
+        return (
+            f"{base_url} did not answer within 15 seconds. After a quiet period it can take "
+            f"a minute to start up; wait a minute and run this again."
+        )
+    if "certificate" in lowered:
+        return (
+            f"could not open a secure connection to {base_url} ({text}). This is common on "
+            f"university or company networks that inspect secure traffic: ask your IT team "
+            f"for their certificate file and point SSL_CERT_FILE at it, or try another network."
+        )
+    return (
+        f"could not reach {base_url} ({text}). Check this computer's internet connection. "
+        f"On a network that needs a proxy, set HTTPS_PROXY to the address your IT team gives you."
+    )
 
 
 def _global_env_path() -> Path:
@@ -3766,7 +3813,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_remote_login)
 
     p = remote_sub.add_parser(
-        "logout", help="remove the locally stored private connection key"
+        "logout", help="sign this computer out (removes its stored sharing key)"
     )
     p.add_argument(
         "--revoke",
@@ -3829,7 +3876,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     def _add_remote_run_options(remote_parser: argparse.ArgumentParser) -> None:
         remote_parser.add_argument(
-            "--name", help="private connection name shown on TU Platform"
+            "--name", help="name for this machine shown on TU Platform"
         )
         remote_parser.add_argument(
             "--workers",
