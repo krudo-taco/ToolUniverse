@@ -387,6 +387,7 @@ default_tool_files = {
     "url": os.path.join(current_dir, "data", "url_fetch_tools.json"),
     "file_download": os.path.join(current_dir, "data", "file_download_tools.json"),
     # 'langchain': os.path.join(current_dir, 'data', 'langchain_tools.json'),
+    "protein_msa": os.path.join(current_dir, "data", "protein_msa_tools.json"),
     "rcsb_pdb": os.path.join(current_dir, "data", "rcsb_pdb_tools.json"),
     "rcsb_search": os.path.join(current_dir, "data", "rcsb_search_tools.json"),
     "tool_composition": os.path.join(

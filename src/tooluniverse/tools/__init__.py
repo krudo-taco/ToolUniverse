@@ -2225,6 +2225,7 @@ from .ProtVar_map_variant import ProtVar_map_variant
 from .ProtacDB_get_protac import ProtacDB_get_protac
 from .ProtacDB_search_protacs import ProtacDB_search_protacs
 from .ProtacDB_search_targets import ProtacDB_search_targets
+from .Protein_MSA_inspect import Protein_MSA_inspect
 from .ProteinsPlus_analyze_binding_site_similarity import (
     ProteinsPlus_analyze_binding_site_similarity,
 )
@@ -5216,6 +5217,7 @@ __all__ = [
     "ProtacDB_get_protac",
     "ProtacDB_search_protacs",
     "ProtacDB_search_targets",
+    "Protein_MSA_inspect",
     "ProteinsPlus_analyze_binding_site_similarity",
     "ProteinsPlus_generate_interaction_diagram",
     "ProteinsPlus_predict_binding_sites",
