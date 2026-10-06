@@ -359,6 +359,8 @@ default_tool_files = {
         current_dir, "data", "uspto_downloader_tools.json"
     ),
     "uspto": os.path.join(current_dir, "data", "uspto_tools.json"),
+    # protocols.io - public repository of peer-reviewed/community lab protocols.
+    "protocolsio": os.path.join(current_dir, "data", "protocolsio_tools.json"),
     "xml": os.path.join(current_dir, "data", "xml_tools.json"),
     "mcp_auto_loader_boltz": os.path.join(
         current_dir, "data", "boltz_mcp_loader_tools.json"
@@ -957,6 +959,9 @@ default_tool_files = {
     ),
     # TCIA - The Cancer Imaging Archive (medical imaging datasets)
     "tcia": os.path.join(current_dir, "data", "tcia_tools.json"),
+    # EPA CompTox/CCTE - chemical identity, hazard, and ToxCast/Tox21
+    # high-throughput bioactivity screening data.
+    "comptox": os.path.join(current_dir, "data", "comptox_tools.json"),
     # OpenNeuro - Neuroimaging data repository (BIDS datasets)
     "openneuro": os.path.join(current_dir, "data", "openneuro_tools.json"),
     # ModelDB - Computational neuroscience model repository (Yale/SenseLab)
@@ -1073,6 +1078,14 @@ default_tool_files = {
     "biorxiv_ext": os.path.join(current_dir, "data", "biorxiv_ext_tools.json"),
     # World Bank - World Development Indicators (GDP, population, health, education, 200+ countries)
     "worldbank": os.path.join(current_dir, "data", "worldbank_tools.json"),
+    # PubMed ID conversion (PMC ID Converter) and citation lookup (ECitMatch)
+    "pubmed_utils": os.path.join(current_dir, "data", "pubmed_utils_tools.json"),
+    # Synapse.org (Sage Bionetworks) public search / entity metadata
+    "synapse": os.path.join(current_dir, "data", "synapse_tools.json"),
+    # Open Targets Platform free-form GraphQL query + schema
+    "opentargets_graphql": os.path.join(
+        current_dir, "data", "opentargets_graphql_tools.json"
+    ),
     # IMF - World Economic Outlook macroeconomic data (GDP growth, inflation, unemployment, debt)
     # Open-Meteo - Free weather forecast, historical climate, air quality, and geocoding
     "open_meteo": os.path.join(current_dir, "data", "open_meteo_tools.json"),

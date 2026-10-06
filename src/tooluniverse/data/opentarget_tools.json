@@ -4310,7 +4310,7 @@
         "type": "OpenTarget",
         "test_examples": [
             {
-                "queryString": "gene:TP53",
+                "queryString": "TP53",
                 "entityNames": [],
                 "page": {
                     "index": 0,

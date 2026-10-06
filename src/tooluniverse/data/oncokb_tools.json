@@ -1348,7 +1348,10 @@
                   "type": "null"
                 },
                 "canonicalTranscript": {
-                  "type": "null"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "germline": {
                   "type": "boolean"
