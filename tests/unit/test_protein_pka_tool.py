@@ -315,14 +315,19 @@ def test_real_kept_protein_chain_remains_in_environment_not_primary_comparison()
     assert not data["comparison"]["unmatched_bound_groups"]
     assert not data["comparison"]["unmatched_free_groups"]
     assert len(data["comparison"]["matched_groups"]) == 26
-    assert sum(
-        g["group_type"] in {"ASP", "GLU", "C-"}
-        for g in data["comparison"]["matched_groups"]
-    ) == 12
+    assert (
+        sum(
+            g["group_type"] in {"ASP", "GLU", "C-"}
+            for g in data["comparison"]["matched_groups"]
+        )
+        == 12
+    )
     assert all(
         g["chain"] == "A" and abs(g["bound_minus_free_pka"]) < 1e-10
         for g in data["comparison"]["matched_groups"]
     )
+
+
 @pytest.mark.skipif(not HAS_PROPKA, reason="Optional PROPKA not installed")
 def test_real_prediction_keeps_all_ubiquitin_carboxylates_and_c_terminus():
     result = tool().run({"pdb_path": str(PDB)})
