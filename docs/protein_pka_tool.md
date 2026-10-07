@@ -10,3 +10,5 @@ Outputs list free_partner_chains, the selected coordinate-record count and the e
 The bundled retention example is public ubiquitin coordinates plus one synthetic distant water in chain W. It tests explicit composition retention, not glycan chemistry, and contains no private research data.
 
 Matched and unmatched comparison groups are limited to the chosen primary chain on both sides. Groups from retained auxiliary protein chains remain available in free_prediction but do not falsely appear as missing primary-partner groups.
+
+The generated Python SDK accepts free_keep_chains as well as the registered TU/CLI route. Passing None preserves the single-chain default. CI checks the committed pKa SDK parameter contract before restoring generated SDK caches or rebuilding wrappers, so generation cannot conceal a stale delivered signature.
