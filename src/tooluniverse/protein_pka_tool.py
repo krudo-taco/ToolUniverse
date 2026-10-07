@@ -113,12 +113,33 @@ class ProteinPKATool(BaseTool):
                     raise ValueError(
                         "partner_chain must be one PDB chain character (space for blank)"
                     )
-                lines = [
+                keep = arguments.get("free_keep_chains")
+                keep = [] if keep is None else keep
+                if (
+                    not isinstance(keep, list)
+                    or len(keep) > 62
+                    or any(not isinstance(c, str) or len(c) != 1 for c in keep)
+                    or len(set(keep)) != len(keep)
+                    or chain in keep
+                ):
+                    raise ValueError(
+                        "free_keep_chains must contain distinct additional one-character chain IDs"
+                    )
+                records = [
                     line
                     for line in content.splitlines()
-                    if line[:6] in ("ATOM  ", "HETATM") and line[21] == chain
+                    if line[:6] in ("ATOM  ", "HETATM")
                 ]
-                if not any(line.startswith("ATOM  ") for line in lines):
+                present = {line[21] for line in records}
+                if any(c not in present for c in keep):
+                    raise ValueError(
+                        "Requested free_keep_chains contain absent coordinate chains"
+                    )
+                selected = {chain, *keep}
+                lines = [line for line in records if line[21] in selected]
+                if not any(
+                    line.startswith("ATOM  ") and line[21] == chain for line in lines
+                ):
                     raise ValueError(
                         "Requested partner_chain has no protein ATOM records"
                     )
@@ -167,6 +188,8 @@ class ProteinPKATool(BaseTool):
             if comparing:
                 result["data"].update(
                     partner_chain=chain,
+                    free_partner_chains=[chain, *keep],
+                    free_partner_coordinate_records=len(lines),
                     comparison_geometry="Partner extracted from identical bound coordinates; no free-state relaxation",
                     free_partner_sha256=hashlib.sha256(
                         free_content.encode()

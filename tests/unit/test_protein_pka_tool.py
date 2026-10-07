@@ -168,3 +168,102 @@ def test_optional_nulls_do_not_create_ambiguous_source():
 
 def test_cache_disabled_for_mutable_paths():
     assert not tool().supports_caching()
+
+
+@pytest.mark.parametrize(
+    "keep", ["G", {}, [True], [""], ["AB"], ["A"], ["W", "W"], ["Z"]]
+)
+def test_invalid_retained_components_do_not_predict(monkeypatch, keep):
+    monkeypatch.setattr(
+        "tooluniverse.protein_pka_tool.subprocess.run",
+        lambda *a, **k: pytest.fail("Invalid free components reached prediction"),
+    )
+    content = (
+        ROOT / "tests/fixtures/protein_pka/1ubq_with_associated_water.pdb"
+    ).read_text()
+    result = tool(1).run(
+        {"pdb_content": content, "partner_chain": "A", "free_keep_chains": keep}
+    )
+    assert result["status"] == "error" and "free_keep_chains" in result["error"]
+
+
+def test_associated_chain_does_not_replace_missing_primary_partner(monkeypatch):
+    monkeypatch.setattr(
+        "tooluniverse.protein_pka_tool.subprocess.run",
+        lambda *a, **k: pytest.fail("Missing primary partner reached prediction"),
+    )
+    result = tool(1).run(
+        {"pdb_path": str(PDB), "partner_chain": "B", "free_keep_chains": ["A"]}
+    )
+    assert result["status"] == "error" and "no protein" in result["error"]
+
+
+@pytest.mark.skipif(not HAS_PROPKA, reason="Optional PROPKA not installed")
+def test_real_retained_component_preserves_same_composition():
+    path = ROOT / "tests/fixtures/protein_pka/1ubq_with_associated_water.pdb"
+    response = tool(1).run(
+        {"pdb_path": str(path), "partner_chain": "A", "free_keep_chains": ["W"]}
+    )
+    jsonschema.validate(response, CONFIGS[1]["return_schema"])
+    assert response["status"] == "success", response
+    data = response["data"]
+    assert data["free_partner_chains"] == ["A", "W"]
+    assert data["free_partner_coordinate_records"] == 603
+    assert all(
+        abs(g["bound_minus_free_pka"]) < 1e-10
+        for g in data["comparison"]["matched_groups"]
+    )
+
+
+@pytest.mark.skipif(not HAS_PROPKA, reason="Optional PROPKA not installed")
+def test_null_retention_keeps_existing_single_chain_default():
+    response = tool(1).run(
+        {"pdb_path": str(PDB), "partner_chain": "A", "free_keep_chains": None}
+    )
+    assert response["status"] == "success", response
+    assert response["data"]["free_partner_chains"] == ["A"]
+
+
+def test_exact_worker_free_input_retains_requested_component_only(monkeypatch):
+    from types import SimpleNamespace
+
+    path = ROOT / "tests/fixtures/protein_pka/1ubq_with_associated_water.pdb"
+    original = path.read_text()
+    other = next(line for line in original.splitlines() if line.startswith("ATOM  "))
+    other = other[:21] + "B" + other[22:]
+    content = original.replace("END\n", other + "\nEND\n")
+    seen = {}
+    monkeypatch.setattr(
+        "tooluniverse.protein_pka_tool.importlib.util.find_spec", lambda name: True
+    )
+
+    def capture(command, **kwargs):
+        request = json.loads(Path(command[2]).read_text())
+        seen["free"] = Path(request["free_path"]).read_text()
+        Path(command[3]).write_text(
+            json.dumps({"status": "error", "error": "captured"})
+        )
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr("tooluniverse.protein_pka_tool.subprocess.run", capture)
+    response = tool(1).run(
+        {"pdb_content": content, "partner_chain": "A", "free_keep_chains": ["W"]}
+    )
+    assert response == {"status": "error", "error": "captured"}
+    records = [
+        line for line in seen["free"].splitlines() if line[:6] in ("ATOM  ", "HETATM")
+    ]
+    assert {line[21] for line in records} == {"A", "W"}
+    assert len(records) == 603
+    assert "HETATM" in seen["free"]
+
+
+def test_retention_limit_is_bounded(monkeypatch):
+    monkeypatch.setattr(
+        "tooluniverse.protein_pka_tool.subprocess.run",
+        lambda *a, **k: pytest.fail("Unbounded components reached prediction"),
+    )
+    result = tool(1).run(
+        {"pdb_path": str(PDB), "partner_chain": "A", "free_keep_chains": ["W"] * 63}
+    )
+    assert result["status"] == "error" and "free_keep_chains" in result["error"]
