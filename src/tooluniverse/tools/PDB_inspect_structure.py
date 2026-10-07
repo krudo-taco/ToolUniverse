@@ -1,7 +1,7 @@
 """
 PDB_inspect_structure
 
-Inspect legacy PDB from local text/path or public ID (1UBQ). Reports chains, coordinate sequences...
+Inspect local legacy PDB or public ID (1UBQ). Reports selected-model coordinates, chains, SEQRES ...
 """
 
 from typing import Any, Optional, Callable
@@ -23,7 +23,7 @@ def PDB_inspect_structure(
     validate: bool = True,
 ) -> Any:
     """
-    Inspect legacy PDB from local text/path or public ID (1UBQ). Reports chains, coordinate sequences...
+    Inspect local legacy PDB or public ID (1UBQ). Reports selected-model coordinates, chains, SEQRES ...
 
     Parameters
     ----------
@@ -36,7 +36,7 @@ def PDB_inspect_structure(
     model_index : int
         Model by file order, default 1. Models are never pooled.
     expected_chain_lengths : dict[str, Any]
-        Expected exact protein-chain lengths, e.g. {"A":76}; mismatch is reported.
+        Expected exact protein-chain length mapping, e.g. {"A":76}. Coordinate counts...
     glycan_residue_names : list[str]
         Additional caller-declared glycan residue names, including GLYCAM labels. Cou...
     protein_residue_aliases : dict[str, Any]
