@@ -560,6 +560,7 @@ STATIC_LAZY_REGISTRY = {
     "PANTHERTool": "panther_tool",
     "PDBECompoundTool": "pdbe_compound_tool",
     "PDBInventoryTool": "pdb_inventory_tool",
+    "PDBLinkAuditTool": "pdb_link_audit_tool",
     "PDBTMTool": "pdbtm_tool",
     "PDBeAPIRESTTool": "pdbe_api_tool",
     "PDBeLigandsTool": "pdbe_ligands_tool",
@@ -602,6 +603,7 @@ STATIC_LAZY_REGISTRY = {
     "ProtVarPopulationTool": "protvar_tool",
     "ProtVarTool": "protvar_tool",
     "ProtacDBTool": "protacdb_tool",
+    "ProteinMSAInventoryTool": "protein_msa_tool",
     "ProteinPKATool": "protein_pka_tool",
     "ProteinStructure3DTool": "protein_structure_3d_tool",
     "ProteinsAPIRESTTool": "proteins_api_tool",
@@ -786,5 +788,5 @@ STATIC_LAZY_REGISTRY = {
     "iDigBioSearchTool": "idigbio_tool",
     "iPTMnetTool": "iptmnet_tool",
     "miRNAGetTool": "mirna_tool",
-    "miRNASearchTool": "mirna_tool"
+    "miRNASearchTool": "mirna_tool",
 }

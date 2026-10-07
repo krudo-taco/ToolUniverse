@@ -1,7 +1,7 @@
 """
 ToolUniverse Tools
 
-Type-safe Python interface to 2856 scientific tools.
+Type-safe Python interface to 2858 scientific tools.
 Each tool is in its own module for minimal import overhead.
 
 Usage:
@@ -2088,6 +2088,7 @@ from .PANTHER_ortholog import PANTHER_ortholog
 from .PDBTM_get_topology import PDBTM_get_topology
 from .PDB_REDO_get_structure_quality import PDB_REDO_get_structure_quality
 from .PDB_REDO_get_version_info import PDB_REDO_get_version_info
+from .PDB_compare_declared_links import PDB_compare_declared_links
 from .PDB_inspect_structure import PDB_inspect_structure
 from .PDB_search_similar_structures import PDB_search_similar_structures
 from .PDBePISA_get_assemblies import PDBePISA_get_assemblies
@@ -2224,6 +2225,7 @@ from .ProtVar_map_variant import ProtVar_map_variant
 from .ProtacDB_get_protac import ProtacDB_get_protac
 from .ProtacDB_search_protacs import ProtacDB_search_protacs
 from .ProtacDB_search_targets import ProtacDB_search_targets
+from .Protein_MSA_inspect import Protein_MSA_inspect
 from .ProteinsPlus_analyze_binding_site_similarity import (
     ProteinsPlus_analyze_binding_site_similarity,
 )
@@ -5082,6 +5084,7 @@ __all__ = [
     "PDBTM_get_topology",
     "PDB_REDO_get_structure_quality",
     "PDB_REDO_get_version_info",
+    "PDB_compare_declared_links",
     "PDB_inspect_structure",
     "PDB_search_similar_structures",
     "PDBePISA_get_assemblies",
@@ -5214,6 +5217,7 @@ __all__ = [
     "ProtacDB_get_protac",
     "ProtacDB_search_protacs",
     "ProtacDB_search_targets",
+    "Protein_MSA_inspect",
     "ProteinsPlus_analyze_binding_site_similarity",
     "ProteinsPlus_generate_interaction_diagram",
     "ProteinsPlus_predict_binding_sites",
