@@ -1,6 +1,7 @@
 """Empirical-state diagnostics must not confuse numbering or missing predictions."""
 
 import importlib.util
+import inspect
 import json
 import math
 import subprocess
@@ -378,3 +379,64 @@ def test_existing_group_identities_remain_compatible(kind):
     from tooluniverse.protein_pka_worker import protein_group_type
 
     assert protein_group_type(SimpleNamespace(type=kind)) == kind
+
+
+def test_delivered_pka_sdk_accepts_all_declared_parameters():
+    from tooluniverse import tools as sdk
+
+    for config in CONFIGS:
+        wrapper = getattr(sdk, config["name"])
+        parameters = inspect.signature(wrapper).parameters
+        assert set(config["parameter"]["properties"]) <= set(parameters)
+
+
+@pytest.mark.parametrize("retained", [None, ["W"]])
+def test_sdk_forwards_retained_components_without_changing_defaults(
+    monkeypatch, retained
+):
+    from tooluniverse.tools import PROPKA_compare_partner_pka
+
+    wrapper_module = importlib.import_module(PROPKA_compare_partner_pka.__module__)
+    calls = []
+    response = {"status": "success", "data": {"sdk_dispatch_reached": True}}
+
+    class Client:
+        def run_one_function(self, call, **options):
+            calls.append((call, options))
+            return response
+
+    monkeypatch.setattr(wrapper_module, "get_shared_client", lambda: Client())
+    result = PROPKA_compare_partner_pka(
+        pdb_path=str(PDB), partner_chain="A", free_keep_chains=retained
+    )
+    assert result is response
+    assert len(calls) == 1
+    call, options = calls[0]
+    assert call["name"] == "PROPKA_compare_partner_pka"
+    assert call["arguments"]["partner_chain"] == "A"
+    if retained is None:
+        assert "free_keep_chains" not in call["arguments"]
+    else:
+        assert call["arguments"]["free_keep_chains"] == retained
+    assert options["use_cache"] is False and options["validate"] is True
+
+
+@pytest.mark.skipif(not HAS_PROPKA, reason="Optional PROPKA not installed")
+def test_real_delivered_sdk_retains_public_component():
+    from tooluniverse.tools import PROPKA_compare_partner_pka
+
+    path = ROOT / "tests/fixtures/protein_pka/1ubq_with_associated_water.pdb"
+    response = PROPKA_compare_partner_pka(
+        pdb_path=str(path), partner_chain="A", free_keep_chains=["W"]
+    )
+    jsonschema.validate(response, CONFIGS[1]["return_schema"])
+    assert response["status"] == "success", response
+    data = response["data"]
+    assert data["free_partner_chains"] == ["A", "W"]
+    assert data["free_partner_coordinate_records"] == 603
+    assert len(data["comparison"]["matched_groups"]) == 26
+    assert all(
+        g["chain"] == "A" and abs(g["bound_minus_free_pka"]) < 1e-10
+        for g in data["comparison"]["matched_groups"]
+    )
+    assert not data["binding_verified"] and not data["pH_selectivity_verified"]
