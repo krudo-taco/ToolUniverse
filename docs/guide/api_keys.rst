@@ -244,11 +244,10 @@ These settings configure connections to external Model Context Protocol (MCP) se
 
 **RFdiffusion2 Protein Design**
 
-:Server Command: ``RFDIFFUSION2_COMMAND`` on the RFdiffusion2 server
-:Host: ``RFDIFFUSION2_MCP_SERVER_HOST`` on the client
-:Required For: RFdiffusion2 backbone design via MCP
-:How to Setup: Deploy the RFdiffusion2 MCP server with RFdiffusion2 installed
-:Tool Categories: ``rfdiffusion2``, ``mcp_auto_loader_rfdiffusion2``
+:Host: ``RFDIFFUSION2_MCP_SERVER_HOST``
+:Required For: RFdiffusion2 protein backbone design via MCP
+:How to Setup: Deploy the RFdiffusion2 MCP server (see :doc:`../tools/remote/rfdiffusion2`)
+:Tool Categories: ``mcp_auto_loader_rfdiffusion2``
 
 **USPTO Patent Downloader**
 
