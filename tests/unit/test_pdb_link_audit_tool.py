@@ -208,3 +208,13 @@ def test_registered_wrapper_and_return_schema():
         response["status"] == "success"
         and not response["data"]["all_declared_distances_agree"]
     )
+
+
+def test_delivered_sdk_import_and_call():
+    from tooluniverse.tools import PDB_compare_declared_links
+
+    response = PDB_compare_declared_links(**EXAMPLE)
+    jsonschema.validate(response, CONFIG["return_schema"])
+    assert response["status"] == "success"
+    assert response["data"]["resolved_link_count"] == 1
+    assert not response["data"]["all_declared_distances_agree"]
