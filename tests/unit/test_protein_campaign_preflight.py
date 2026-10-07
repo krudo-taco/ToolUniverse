@@ -1,6 +1,7 @@
-"""Synthetic, offline invariants for the campaign's submission helper."""
+"""Public ubiquitin control and synthetic edge cases; no private designs."""
 
 import csv
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -184,6 +185,144 @@ class PreflightTests(unittest.TestCase):
         )
         self.assertEqual(bad.returncode, 2)
         self.assertFalse(json.loads(bad.stdout)["format_and_disclosure_checks_pass"])
+
+
+# Public RCSB 1UBQ chain A (76 residues), used only as a format control.
+UBIQUITIN = (
+    "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG"
+)
+
+
+class PublicControlTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.csv = self.root / "submission.csv"
+        self.csv.write_text(f"name,sequence\npublic_1ubq,{UBIQUITIN}\n")
+        self.args = SimpleNamespace(
+            csv=self.csv,
+            methods=None,
+            source_csv=None,
+            min_length=10,
+            max_length=250,
+            max_designs=20,
+            max_bytes=5_000_000,
+            classes=module.DEFAULT_CLASSES,
+            paired_classes=module.DEFAULT_PAIRED_CLASSES,
+            default_class="single_chain",
+        )
+
+    def check(self, category=None):
+        result = module.preflight(self.args)
+        if category:
+            self.assertFalse(result["format_and_disclosure_checks_pass"])
+            self.assertIn(category, {i["category"] for i in result["issues"]})
+        else:
+            self.assertTrue(result["format_and_disclosure_checks_pass"])
+        return result
+
+    def test_public_protein_lengths_and_exact_hashes(self):
+        result = self.check()
+        self.assertEqual(result["candidates"][0]["chain_lengths"], [76])
+        self.assertEqual(
+            result["candidates"][0]["sequence_sha256"],
+            hashlib.sha256(UBIQUITIN.encode()).hexdigest(),
+        )
+        self.assertEqual(
+            result["files"]["submission"]["sha256"],
+            hashlib.sha256(self.csv.read_bytes()).hexdigest(),
+        )
+
+    def test_class_omission_uses_configured_default(self):
+        self.args.default_class = "nanobody"
+        self.check()
+        self.args.default_class = "unrecognized"
+        self.check("unsupported_molecule_class")
+
+    def test_utf8_bom_changes_file_hash_not_sequence_identity(self):
+        before = self.check()
+        self.csv.write_bytes(b"\xef\xbb\xbf" + self.csv.read_bytes())
+        after = self.check()
+        self.assertEqual(before["candidates"], after["candidates"])
+        self.assertNotEqual(before["files"], after["files"])
+
+    def test_missing_required_header(self):
+        self.csv.write_text(f"name,protein\npublic_1ubq,{UBIQUITIN}\n")
+        self.check("missing_required_headers")
+
+    def test_missing_row_field(self):
+        self.csv.write_text("name,sequence\npublic_1ubq\n")
+        self.check("malformed_csv_row")
+
+    def test_extra_row_field(self):
+        self.csv.write_text(f"name,sequence\npublic_1ubq,{UBIQUITIN},unreviewed\n")
+        self.check("malformed_csv_row")
+
+    def test_unterminated_quoted_csv(self):
+        self.csv.write_text(f'name,sequence\n"public_1ubq,{UBIQUITIN}\n')
+        self.check("malformed_csv")
+
+    def test_empty_submission(self):
+        self.csv.write_text("name,sequence\n")
+        self.check("candidate_count_limit")
+
+    def test_case_is_not_silently_normalized(self):
+        self.csv.write_text(f"name,sequence\npublic_1ubq,{UBIQUITIN.lower()}\n")
+        self.check("invalid_amino_acids")
+
+    def test_all_invalid_resource_limits_fail_before_reading(self):
+        for name in ("min_length", "max_length", "max_designs", "max_bytes"):
+            original = getattr(self.args, name)
+            setattr(self.args, name, 0)
+            result = self.check("invalid_limits")
+            self.assertEqual(result["files"], {})
+            setattr(self.args, name, original)
+
+    def test_empty_class_vocabulary(self):
+        self.args.classes = " , "
+        self.check("empty_class_vocabulary")
+
+    def test_missing_methods_file_is_not_ignored(self):
+        self.args.methods = self.root / "missing-methods.txt"
+        self.check("unreadable_or_non_utf8")
+
+    def test_missing_source_file_is_not_ignored(self):
+        self.args.source_csv = self.root / "missing-source.csv"
+        self.check("unreadable_or_non_utf8")
+
+    def test_duplicate_source_name_is_ambiguous(self):
+        self.args.source_csv = self.root / "source.csv"
+        self.args.source_csv.write_text(
+            self.csv.read_text() + f"public_1ubq,{UBIQUITIN}\n"
+        )
+        self.check("duplicate_source_name")
+
+    def test_source_can_include_unselected_controls(self):
+        self.args.source_csv = self.root / "source.csv"
+        self.args.source_csv.write_text(
+            self.csv.read_text() + f"unselected_control,{UBIQUITIN}\n"
+        )
+        self.check()
+
+    def test_public_control_cli_reports_only_review_metadata(self):
+        methods = self.root / "methods.txt"
+        methods.write_text(
+            "Public 1UBQ formatting control; binding remains unmeasured."
+        )
+        before = (self.csv.read_bytes(), methods.read_bytes())
+        run = subprocess.run(
+            [sys.executable, str(SCRIPT), str(self.csv), "--methods", str(methods)],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(run.returncode, 0)
+        report = json.loads(run.stdout)
+        self.assertEqual(report["candidate_count"], 1)
+        self.assertIn("binding_or_pH_selectivity", report["not_checked"])
+        self.assertNotIn(UBIQUITIN, run.stdout)
+        self.assertNotIn("public_1ubq", run.stdout)
+        self.assertEqual(before, (self.csv.read_bytes(), methods.read_bytes()))
 
 
 if __name__ == "__main__":
