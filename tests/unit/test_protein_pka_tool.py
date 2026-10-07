@@ -209,6 +209,7 @@ def test_real_retained_component_preserves_same_composition():
     data = response["data"]
     assert data["free_partner_chains"] == ["A", "W"]
     assert data["free_partner_coordinate_records"] == 603
+    assert len(data["comparison"]["matched_groups"]) == 26
     assert all(
         abs(g["bound_minus_free_pka"]) < 1e-10
         for g in data["comparison"]["matched_groups"]
@@ -313,6 +314,11 @@ def test_real_kept_protein_chain_remains_in_environment_not_primary_comparison()
     assert any(g["chain"] == "B" for g in data["free_prediction"]["groups"])
     assert not data["comparison"]["unmatched_bound_groups"]
     assert not data["comparison"]["unmatched_free_groups"]
+    assert len(data["comparison"]["matched_groups"]) == 26
+    assert sum(
+        g["group_type"] in {"ASP", "GLU", "C-"}
+        for g in data["comparison"]["matched_groups"]
+    ) == 12
     assert all(
         g["chain"] == "A" and abs(g["bound_minus_free_pka"]) < 1e-10
         for g in data["comparison"]["matched_groups"]
