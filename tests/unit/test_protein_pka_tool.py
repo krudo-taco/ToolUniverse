@@ -317,3 +317,53 @@ def test_real_kept_protein_chain_remains_in_environment_not_primary_comparison()
         g["chain"] == "A" and abs(g["bound_minus_free_pka"]) < 1e-10
         for g in data["comparison"]["matched_groups"]
     )
+@pytest.mark.skipif(not HAS_PROPKA, reason="Optional PROPKA not installed")
+def test_real_prediction_keeps_all_ubiquitin_carboxylates_and_c_terminus():
+    result = tool().run({"pdb_path": str(PDB)})
+    assert result["status"] == "success", result
+    groups = result["data"]["prediction"]["groups"]
+    acidic = {
+        g["residue_number"]: g
+        for g in groups
+        if g["group_type"] in {"ASP", "GLU", "C-"}
+    }
+    assert set(acidic) == {16, 18, 21, 24, 32, 34, 39, 51, 52, 58, 64, 76}
+    assert acidic[21]["group_type"] == "ASP"
+    assert acidic[16]["group_type"] == "GLU"
+    assert acidic[76]["group_type"] == "C-"
+    assert all(
+        g["propka_group_type"] == "COO" and math.isfinite(g["pka"])
+        for g in acidic.values()
+    )
+    comparison = tool(1).run({"pdb_path": str(PDB), "partner_chain": "A"})
+    matched = comparison["data"]["comparison"]["matched_groups"]
+    assert len(matched) == len(groups)
+    assert all(abs(g["bound_minus_free_pka"]) < 1e-10 for g in matched)
+
+
+@pytest.mark.parametrize(
+    "residue,terminal,kind",
+    [
+        ("ASP", None, "ASP"),
+        ("GLU", None, "GLU"),
+        ("ASP", "C-", "C-"),
+        ("GLY", None, None),
+    ],
+)
+def test_upstream_carboxylate_identity_and_ligand_exclusion(residue, terminal, kind):
+    from types import SimpleNamespace
+    from tooluniverse.protein_pka_worker import protein_group_type
+
+    atom = SimpleNamespace(type="atom", res_name=residue, terminal=terminal)
+    upstream = SimpleNamespace(type="COO", atom=atom)
+    assert protein_group_type(upstream) == kind
+    atom.type = "hetatm"
+    assert protein_group_type(upstream) is None
+
+
+@pytest.mark.parametrize("kind", ["ASP", "GLU", "C-", "HIS", "N+"])
+def test_existing_group_identities_remain_compatible(kind):
+    from types import SimpleNamespace
+    from tooluniverse.protein_pka_worker import protein_group_type
+
+    assert protein_group_type(SimpleNamespace(type=kind)) == kind

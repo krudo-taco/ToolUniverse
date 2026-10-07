@@ -11,6 +11,20 @@ from pathlib import Path
 PROTEIN_GROUPS = {"HIS", "ASP", "GLU", "LYS", "ARG", "CYS", "TYR", "N+", "C-"}
 
 
+def protein_group_type(group):
+    """Map PROPKA's unified protein carboxyl type without admitting ligands."""
+    if group.type == "COO":
+        atom = group.atom
+        if atom.type != "atom":
+            return None
+        if atom.terminal == "C-":
+            return "C-"
+        if atom.res_name in {"ASP", "GLU"}:
+            return atom.res_name
+        return None
+    return group.type if group.type in PROTEIN_GROUPS else None
+
+
 def protonated_fraction(pka, ph):
     """Independent-site Henderson-Hasselbalch estimate, not a charge or affinity."""
     exponent = ph - pka
@@ -43,14 +57,16 @@ def predict(path, ph_values):
         )
     groups, omitted = [], []
     for group in molecule.conformations[names[0]].groups:
-        if group.type not in PROTEIN_GROUPS:
+        kind = protein_group_type(group)
+        if kind is None:
             continue
         atom = group.atom
         row = {
             "chain": atom.chain_id,
             "residue_number": int(atom.res_num),
             "insertion_code": atom.icode.strip(),
-            "group_type": group.type,
+            "group_type": kind,
+            "propka_group_type": group.type,
             "label": group.label,
         }
         pka = float(group.pka_value)
