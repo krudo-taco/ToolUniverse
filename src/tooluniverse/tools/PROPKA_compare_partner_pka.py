@@ -1,7 +1,7 @@
 """
 PROPKA_compare_partner_pka
 
-Compare protein pKa in a complex with the same-coordinate isolated chain using local PROPKA. Retu...
+Compare protein pKa in a complex with the same-coordinate free partner using local PROPKA. Explic...
 """
 
 from typing import Any, Optional, Callable
@@ -15,13 +15,14 @@ def PROPKA_compare_partner_pka(
     pdb_content: Optional[str] = None,
     ph_values: Optional[list[Any]] = None,
     timeout_seconds: Optional[int] = None,
+    free_keep_chains: Optional[list[str]] = None,
     *,
     stream_callback: Optional[Callable[[str], None]] = None,
     use_cache: bool = False,
     validate: bool = True,
 ) -> Any:
     """
-    Compare protein pKa in a complex with the same-coordinate isolated chain using local PROPKA. Retu...
+    Compare protein pKa in a complex with the same-coordinate free partner using local PROPKA. Explic...
 
     Parameters
     ----------
@@ -37,6 +38,8 @@ def PROPKA_compare_partner_pka(
         pH values for independent-site fractions; defaults to [6.5, 7.4].
     timeout_seconds : int
         Bounded runtime for both calculations; defaults to 180 seconds.
+    free_keep_chains : list[str]
+        Additional chains belonging to the free partner, e.g. covalent glycans/cofact...
     stream_callback : Callable, optional
         Callback for streaming output
     use_cache : bool, default False
@@ -60,6 +63,7 @@ def PROPKA_compare_partner_pka(
             "partner_chain": partner_chain,
             "ph_values": ph_values,
             "timeout_seconds": timeout_seconds,
+            "free_keep_chains": free_keep_chains,
         }.items()
         if v is not None
     }
