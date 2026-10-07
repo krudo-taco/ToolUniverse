@@ -88,7 +88,7 @@ def group_key(row):
 
 def compare(bound, free, chain):
     bound_rows = [row for row in bound["groups"] if row["chain"] == chain]
-    free_rows = {group_key(row): row for row in free["groups"]}
+    free_rows = {group_key(row): row for row in free["groups"] if row["chain"] == chain}
     matched, missing = [], []
     for row in bound_rows:
         reference = free_rows.get(group_key(row))

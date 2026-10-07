@@ -267,3 +267,53 @@ def test_retention_limit_is_bounded(monkeypatch):
         {"pdb_path": str(PDB), "partner_chain": "A", "free_keep_chains": ["W"] * 63}
     )
     assert result["status"] == "error" and "free_keep_chains" in result["error"]
+
+
+def test_auxiliary_protein_groups_do_not_hide_real_primary_mismatches():
+    bound = {
+        "groups": [
+            group(residue=68),
+            group(residue=69),
+            group(chain="B"),
+            group(chain="B", residue=69),
+        ]
+    }
+    free = {
+        "groups": [
+            group(residue=68),
+            group(residue=70),
+            group(chain="B"),
+            group(chain="B", residue=70),
+        ]
+    }
+    result = compare(bound, free, "A")
+    assert [g["residue_number"] for g in result["matched_groups"]] == [68]
+    assert [
+        (g["chain"], g["residue_number"]) for g in result["unmatched_bound_groups"]
+    ] == [("A", 69)]
+    assert [
+        (g["chain"], g["residue_number"]) for g in result["unmatched_free_groups"]
+    ] == [("A", 70)]
+
+
+@pytest.mark.skipif(not HAS_PROPKA, reason="Optional PROPKA not installed")
+def test_real_kept_protein_chain_remains_in_environment_not_primary_comparison():
+    lines = [line for line in PDB.read_text().splitlines() if line.startswith("ATOM  ")]
+    other = [
+        line[:21] + "B" + line[22:30] + f"{float(line[30:38]) + 100:8.3f}" + line[38:]
+        for line in lines
+    ]
+    content = "\n".join(lines + other) + "\nEND\n"
+    result = tool(1).run(
+        {"pdb_content": content, "partner_chain": "A", "free_keep_chains": ["B"]}
+    )
+    assert result["status"] == "success", result
+    data = result["data"]
+    assert data["free_partner_chains"] == ["A", "B"]
+    assert any(g["chain"] == "B" for g in data["free_prediction"]["groups"])
+    assert not data["comparison"]["unmatched_bound_groups"]
+    assert not data["comparison"]["unmatched_free_groups"]
+    assert all(
+        g["chain"] == "A" and abs(g["bound_minus_free_pka"]) < 1e-10
+        for g in data["comparison"]["matched_groups"]
+    )
