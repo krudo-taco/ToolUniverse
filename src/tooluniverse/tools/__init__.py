@@ -1,7 +1,7 @@
 """
 ToolUniverse Tools
 
-Type-safe Python interface to 2859 scientific tools.
+Type-safe Python interface to 2869 scientific tools.
 Each tool is in its own module for minimal import overhead.
 
 Usage:
@@ -599,6 +599,11 @@ from .EVA_get_variants_by_region import EVA_get_variants_by_region
 from .EVA_list_studies import EVA_list_studies
 from .EVE_get_gene_info import EVE_get_gene_info
 from .EVE_get_variant_score import EVE_get_variant_score
+from .EWASAtlas_get_probe import EWASAtlas_get_probe
+from .EWASAtlas_get_publication import EWASAtlas_get_publication
+from .EWASAtlas_get_study import EWASAtlas_get_study
+from .EWASAtlas_search_by_gene import EWASAtlas_search_by_gene
+from .EWASAtlas_search_by_region import EWASAtlas_search_by_region
 from .EWASCatalog_search_by_cpg import EWASCatalog_search_by_cpg
 from .EWASCatalog_search_by_gene import EWASCatalog_search_by_gene
 from .Enamine_get_compound import Enamine_get_compound
@@ -2702,6 +2707,11 @@ from .VEuPathDB_list_gene_searches import VEuPathDB_list_gene_searches
 from .VEuPathDB_list_organism_searches import VEuPathDB_list_organism_searches
 from .VEuPathDB_list_record_types import VEuPathDB_list_record_types
 from .VEuPathDB_search_genes_by_organism import VEuPathDB_search_genes_by_organism
+from .VSDDiscoverSources import VSDDiscoverSources
+from .VSDListSources import VSDListSources
+from .VSDQuerySource import VSDQuerySource
+from .VSDRegisterSource import VSDRegisterSource
+from .VSDRemoveSource import VSDRemoveSource
 from .VariantValidator_format_genomic_to_transcripts import (
     VariantValidator_format_genomic_to_transcripts,
 )
@@ -3980,6 +3990,11 @@ __all__ = [
     "EVA_list_studies",
     "EVE_get_gene_info",
     "EVE_get_variant_score",
+    "EWASAtlas_get_probe",
+    "EWASAtlas_get_publication",
+    "EWASAtlas_get_study",
+    "EWASAtlas_search_by_gene",
+    "EWASAtlas_search_by_region",
     "EWASCatalog_search_by_cpg",
     "EWASCatalog_search_by_gene",
     "Enamine_get_compound",
@@ -5651,6 +5666,11 @@ __all__ = [
     "VEuPathDB_list_organism_searches",
     "VEuPathDB_list_record_types",
     "VEuPathDB_search_genes_by_organism",
+    "VSDDiscoverSources",
+    "VSDListSources",
+    "VSDQuerySource",
+    "VSDRegisterSource",
+    "VSDRemoveSource",
     "VariantValidator_format_genomic_to_transcripts",
     "VariantValidator_gene2transcripts",
     "VariantValidator_validate_variant",
